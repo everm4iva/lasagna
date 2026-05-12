@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="everm4iva.lasagna.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>lasagna</name>
+    <description>
+        Convert your currency to lasagna! Because it's more stable.. duhh
+    </description>
+    <author email="umaera.dev@gmail.com" href="https://everm4iva.github.io/p/lasagna">
+        everm4iva
+    </author>
+    <content src="index.html" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+
+        <!-- Android Icons -->
+    <platform name="android">
+        <icon density="ldpi" src="www/shc/lasanha.png" />
+        <icon density="mdpi" src="www/shc/lasanha.png" />
+        <icon density="hdpi" src="www/shc/lasanha.png" />
+        <icon density="xhdpi" src="www/shc/lasanha.png" />
+        <icon density="xxhdpi" src="www/shc/lasanha.png" />
+        <icon density="xxxhdpi" src="www/shc/lasanha.png" />
+
+        <!-- Splash Screen Configuration -->
+        <preference name="SplashScreenDelay" value="0" />
+        <preference name="FadeSplashScreen" value="false" />
+        <preference name="ShowSplashScreen" value="false" />
+
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="shc/lasagna.png" />
+        <preference name="AndroidWindowSplashScreenBackground" value="#ffffff" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/splash/splashscreen.xml" />
+        <preference name="SplashScreenDelay" value="2000" />
+
+    </platform>
+</widget>

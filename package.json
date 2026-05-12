@@ -1,0 +1,31 @@
+{
+  "name": "everm4iva.lasagna.app",
+  "displayName": "lasagna",
+  "version": "1.0.0",
+  "description": "Convert your currency to lasagna! Because it's more stable.. duhh",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova",
+    "everm4iva",
+    "lasagna",
+    "currency",
+    "converter",
+    "javascript",
+    "mobile",
+    "app",
+    "android"
+  ],
+  "author": "everm4iva",
+  "website": "https://everm4iva.github.io/p/lasagna",
+  "repository": {
+    "url": "https://github.com/everm4iva/lasagna"
+  },
+  "license": "PFF",
+  "devDependencies": {
+    "cordova-android": "^15.0.0"
+  }
+}
