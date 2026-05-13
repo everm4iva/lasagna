@@ -184,7 +184,8 @@
 
 		const items = await App.fetchLasanhaData();
 		// fetch rates and setup gold fallback early so helper functions can use them
-		rates = await App.fetchRates();
+		const FALLBACK_RATES = {USD: 1.1, BRL: 5.0, GBP: 0.87};
+		rates = (await App.fetchRates().catch(() => FALLBACK_RATES)) || FALLBACK_RATES;
 		const DEFAULT_GOLD_PER_GRAM = 128.82;
 		let goldPerGram = null;
 		const avgPerKg = items.reduce((s, i) => s + i.perKg, 0) / Math.max(items.length, 1);
@@ -489,7 +490,7 @@
 							(await App.fetchGoldPerGram().catch(() => DEFAULT_GOLD_PER_GRAM)) || DEFAULT_GOLD_PER_GRAM;
 					eurAmount = v * goldPerGram;
 				} else {
-					const r = rates[cur];
+					const r = rates && typeof rates[cur] === 'number' ? rates[cur] : FALLBACK_RATES[cur] || null;
 					if (!r) {
 						results.querySelector('#summary').textContent = App.tr('errorRateUnavailable');
 						return;
