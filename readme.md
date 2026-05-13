@@ -13,8 +13,6 @@ Lasagna is a simple web application that converts your boring currency to lasagn
 
 It is built using HTML, CSS, and JavaScript, and packages with <a href="https://cordova.apache.org/">Apache Cordova</a> to create a cross-platform mobile application.
 
-The application uses a simple conversion rate of 1 USD = 1 Lasagna, but you can customize it to your liking.
-
 > I created this project because my brain is been doing this thing for months of "convert my money to lasagna" and i couldn't keep up with the market lasagna price, so here it is. - Very autistic
 
 > quick note: it only applies to the portuguese lasagna market as a base. But it becomes more fun, if in a conversation you say "that equals 4 portuguese lasagnas" heheh
