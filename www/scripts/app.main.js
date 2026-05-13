@@ -377,7 +377,8 @@
 		function getBasisPrice(basis) {
 			let v = avgPackagePrice;
 			if (!basis || basis === 'typical') v = avgPackagePrice;
-			else if (basis === 'cheapest_pkg') v = (cheapestPackageItem && cheapestPackageItem.price) || avgPackagePrice;
+			else if (basis === 'cheapest_pkg')
+				v = (cheapestPackageItem && cheapestPackageItem.price) || avgPackagePrice;
 			else if (basis === 'cheapest_kg') v = (bestItem && bestItem.price) || avgPackagePrice;
 			else if (basis === 'best_quality') v = (bestQuality && bestQuality.price) || avgPackagePrice;
 			return v && v > 0 ? v : avgPackagePrice;
