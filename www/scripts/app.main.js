@@ -179,7 +179,14 @@
 		const bigResult = document.getElementById('bigResult');
 		const bigSub = document.getElementById('bigSub');
 
+		// rates may be fetched asynchronously; declare early to avoid TDZ when passed around
+		let rates = null;
+
 		const items = await App.fetchLasanhaData();
+		// fetch rates and setup gold fallback early so helper functions can use them
+		rates = await App.fetchRates();
+		const DEFAULT_GOLD_PER_GRAM = 128.82;
+		let goldPerGram = null;
 		const avgPerKg = items.reduce((s, i) => s + i.perKg, 0) / Math.max(items.length, 1);
 		const avgPackagePrice = items.reduce((s, i) => s + i.price, 0) / Math.max(items.length, 1);
 
@@ -205,8 +212,8 @@
 			el.innerHTML = '';
 			const cur = elCurrency.value;
 			itemsArr.forEach((it) => {
-				const priceText = formatAmountForDisplay(it.price, cur).text;
-				const perKgText = formatAmountForDisplay(it.perKg, cur).text + ' / kg';
+				const priceText = formatAmountForDisplay(it.price, cur, rates).text;
+				const perKgText = formatAmountForDisplay(it.perKg, cur, rates).text + ' / kg';
 				const li = document.createElement('li');
 				li.className = 'item';
 				li.innerHTML = `<strong>${priceText}</strong> <small>${it.weight} g</small><div>${perKgText}</div>`;
@@ -225,8 +232,8 @@
 						App.state.currentLang === 'pt'
 							? pluralize(g.count, 'item', 'itens')
 							: pluralize(g.count, 'item', 'items');
-					const avgPriceText = formatAmountForDisplay(g.avgPrice, cur).text;
-					const avgPerKgText = formatAmountForDisplay(g.avgPerKg, cur).text + '/kg';
+					const avgPriceText = formatAmountForDisplay(g.avgPrice, cur, rates).text;
+					const avgPerKgText = formatAmountForDisplay(g.avgPerKg, cur, rates).text + '/kg';
 					const li = document.createElement('li');
 					li.className = 'item';
 					li.innerHTML = `<strong>${k} g — ${g.count} ${itemWord}</strong><div>${App.tr('avgWord')} ${avgPriceText} · ${avgPerKgText}</div>`;
@@ -240,8 +247,8 @@
 			if (!br || !bs) return;
 			br.textContent = `—`;
 			const cur = elCurrency.value;
-			const pkgText = formatAmountForDisplay(avgPkg, cur).text;
-			const perKgText = formatAmountForDisplay(avgKg, cur).text + '/kg';
+			const pkgText = formatAmountForDisplay(avgPkg, cur, rates).text;
+			const perKgText = formatAmountForDisplay(avgKg, cur, rates).text + '/kg';
 			bs.textContent = `${App.tr('avgPkg')} ${pkgText} · ${App.tr('avgPerKg')} ${perKgText}`;
 		}
 
@@ -312,7 +319,7 @@
 
 		const marketStatsDisplay = marketStats.map((m) => ({
 			...m,
-			avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+			avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value, rates).text,
 		}));
 
 		renderSummaryCardLocalized(avgPackagePrice, avgPerKg, avgWeight);
@@ -386,7 +393,7 @@
 			}
 		}
 
-		function formatAmountForDisplay(eurAmount, cur) {
+		function formatAmountForDisplay(eurAmount, cur, ratesLocal) {
 			if (cur === 'GOLD') {
 				const gPer = goldPerGram || DEFAULT_GOLD_PER_GRAM || 1;
 				const grams = gPer ? eurAmount / gPer : 0;
@@ -397,7 +404,7 @@
 			const fallbackRates = {USD: 1.1, BRL: 5.0, GBP: 0.87};
 			let rate = null;
 			if (cur === 'EUR') rate = 1;
-			else if (rates && typeof rates[cur] === 'number') rate = rates[cur];
+			else if (ratesLocal && typeof ratesLocal[cur] === 'number') rate = ratesLocal[cur];
 			else if (fallbackRates[cur]) rate = fallbackRates[cur];
 
 			let value = eurAmount;
@@ -422,7 +429,7 @@
 			renderViewLocalized(compactToggle.checked, groups, items, itemsList);
 			const marketStatsDisp = marketStats.map((m) => ({
 				...m,
-				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value, rates).text,
 			}));
 			renderDetails({bestItem, worstItem, bestQuality, marketStats: marketStatsDisp});
 		});
@@ -460,10 +467,6 @@
 			location.reload();
 		});
 
-		const rates = await App.fetchRates();
-		const DEFAULT_GOLD_PER_GRAM = 128.82;
-		let goldPerGram = null;
-
 		btn.addEventListener('click', async () => {
 			const v = parseFloat(elAmount.value || 0);
 			const cur = elCurrency.value;
@@ -496,7 +499,7 @@
 			}
 
 			// Prepare display amount (converted to selected currency or grams for GOLD)
-			const display = formatAmountForDisplay(eurAmount, elCurrency.value);
+			const display = formatAmountForDisplay(eurAmount, elCurrency.value, rates);
 
 			const kg = avgPerKg ? eurAmount / avgPerKg : 0;
 			const units400 = (kg * 1000) / 400;
@@ -519,7 +522,7 @@
 			});
 			const marketStatsDisp = marketStats.map((m) => ({
 				...m,
-				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value, rates).text,
 			}));
 			renderDetails({
 				bestItem,
