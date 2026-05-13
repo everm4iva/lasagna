@@ -82,6 +82,10 @@ h1 {
 	animation: fade 3000ms infinite;
 }
 
+.hidden{
+	display: none;
+}
+
 a {
 	color: var(--cute-pink);
 	background-color: #000000;

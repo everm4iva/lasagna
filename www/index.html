@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; connect-src 'self' https://api.exchangerate.host https://api.metals.live; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;" />
+			content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://ssl.gstatic.com; connect-src 'self' https://api.exchangerate.host https://api.metals.live; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:" />
 		<meta name="format-detection" content="telephone=yes" />
 		<meta name="msapplication-tap-highlight" content="no" />
 		<meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover" />
@@ -72,8 +72,8 @@
 
 						<button id="calc">Calculate</button>
 						<label style="align-self: center"
-							><span id="compactLabel">Compact view</span>
-							<input id="compact" type="checkbox" checked />
+							><span id="compactLabel" class="hidden">Compact view</span>
+							<input id="compact" type="checkbox" checked class="hidden" />
 						</label>
 					</section>
 
@@ -100,8 +100,8 @@
 					</label>
 
 					<label>
-						<span id="defaultViewLabel">Default view</span>
-						<select id="defaultView">
+						<span id="defaultViewLabel" class="hidden">Default view</span>
+						<select id="defaultView" class="hidden">
 							<option value="compact" data-i18n="opt_default_compact">Compact</option>
 							<option value="list" data-i18n="opt_default_list">List</option>
 						</select>

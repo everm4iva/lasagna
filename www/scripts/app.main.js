@@ -126,7 +126,8 @@
 							App.state.currentLang === 'pt'
 								? pluralize(m.count, 'item', 'itens')
 								: pluralize(m.count, 'item', 'items');
-						return `${m.name}: ${m.count} ${itemWord} · ${App.tr('avgWord')} €${m.avgPerKg.toFixed(2)}/kg`;
+						const avgText = m.avgPerKgDisplay ? m.avgPerKgDisplay : `€${m.avgPerKg.toFixed(2)}`;
+						return `${m.name}: ${m.count} ${itemWord} · ${App.tr('avgWord')} ${avgText}/kg`;
 					})
 					.join('<br>'),
 			);
@@ -136,7 +137,7 @@
 				App.format(App.tr('byWeightText'), {
 					g: Math.round(obj.kg * 1000),
 					kg: obj.kg.toFixed(3),
-					eur: obj.eurAmount.toFixed(2),
+					eur: obj.displayAmount || (obj.eurAmount ? `€${obj.eurAmount.toFixed(2)}` : ''),
 				}),
 			);
 	}
@@ -198,10 +199,61 @@
 		App.applyTranslations(settings.lang || 'en', {avgPerKg, avgWeight, medianWeight, mode});
 
 		const groups = groupByRounded(items, settings.groupStep || 50);
-		renderView(compactToggle.checked, groups, items, itemsList);
+
+		// Localized render helpers that use selected currency conversion
+		function renderItemsLocalized(itemsArr, el) {
+			el.innerHTML = '';
+			const cur = elCurrency.value;
+			itemsArr.forEach((it) => {
+				const priceText = formatAmountForDisplay(it.price, cur).text;
+				const perKgText = formatAmountForDisplay(it.perKg, cur).text + ' / kg';
+				const li = document.createElement('li');
+				li.className = 'item';
+				li.innerHTML = `<strong>${priceText}</strong> <small>${it.weight} g</small><div>${perKgText}</div>`;
+				el.appendChild(li);
+			});
+		}
+
+		function renderGroupsLocalized(groupsObj, el) {
+			el.innerHTML = '';
+			const cur = elCurrency.value;
+			Object.keys(groupsObj)
+				.sort((a, b) => parseInt(a) - parseInt(b))
+				.forEach((k) => {
+					const g = groupsObj[k];
+					const itemWord =
+						App.state.currentLang === 'pt'
+							? pluralize(g.count, 'item', 'itens')
+							: pluralize(g.count, 'item', 'items');
+					const avgPriceText = formatAmountForDisplay(g.avgPrice, cur).text;
+					const avgPerKgText = formatAmountForDisplay(g.avgPerKg, cur).text + '/kg';
+					const li = document.createElement('li');
+					li.className = 'item';
+					li.innerHTML = `<strong>${k} g — ${g.count} ${itemWord}</strong><div>${App.tr('avgWord')} ${avgPriceText} · ${avgPerKgText}</div>`;
+					el.appendChild(li);
+				});
+		}
+
+		function renderSummaryCardLocalized(avgPkg, avgKg, avgWeightVal) {
+			const br = document.getElementById('bigResult');
+			const bs = document.getElementById('bigSub');
+			if (!br || !bs) return;
+			br.textContent = `—`;
+			const cur = elCurrency.value;
+			const pkgText = formatAmountForDisplay(avgPkg, cur).text;
+			const perKgText = formatAmountForDisplay(avgKg, cur).text + '/kg';
+			bs.textContent = `${App.tr('avgPkg')} ${pkgText} · ${App.tr('avgPerKg')} ${perKgText}`;
+		}
+
+		renderViewLocalized(compactToggle.checked, groups, items, itemsList);
+
+		function renderViewLocalized(compact, groupsObj, itemsArr, el) {
+			if (compact) renderGroupsLocalized(groupsObj, el);
+			else renderItemsLocalized(itemsArr, el);
+		}
 
 		compactToggle.addEventListener('change', () =>
-			renderView(
+			renderViewLocalized(
 				compactToggle.checked,
 				groupByRounded(items, parseInt(groupStepSel.value, 10) || 50),
 				items,
@@ -240,10 +292,10 @@
 			});
 		}
 
-		const bestItem = items.reduce((a, b) => (a.perKg < b.perKg ? a : b));
-		const cheapestPackageItem = items.reduce((a, b) => (a.price < b.price ? a : b));
-		const worstItem = items.reduce((a, b) => (a.perKg > b.perKg ? a : b));
-		const bestQuality = items.reduce((a, b) => (a.weight > b.weight ? a : b));
+		const bestItem = items.length ? items.reduce((a, b) => (a.perKg < b.perKg ? a : b)) : null;
+		const cheapestPackageItem = items.length ? items.reduce((a, b) => (a.price < b.price ? a : b)) : null;
+		const worstItem = items.length ? items.reduce((a, b) => (a.perKg > b.perKg ? a : b)) : null;
+		const bestQuality = items.length ? items.reduce((a, b) => (a.weight > b.weight ? a : b)) : null;
 
 		const market = {};
 		items.forEach((it) => {
@@ -258,8 +310,13 @@
 			avgPerKg: market[k].sumPerKg / market[k].count,
 		}));
 
-		renderSummaryCard({avgPerKg, avgPackagePrice, avgWeight});
-		renderDetails({bestItem, worstItem, bestQuality, marketStats});
+		const marketStatsDisplay = marketStats.map((m) => ({
+			...m,
+			avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+		}));
+
+		renderSummaryCardLocalized(avgPackagePrice, avgPerKg, avgWeight);
+		renderDetails({bestItem, worstItem, bestQuality, marketStats: marketStatsDisplay});
 
 		// tabs
 		const showTab = (which) => {
@@ -307,10 +364,47 @@
 		function getBasisPrice(basis) {
 			if (!basis) return avgPackagePrice;
 			if (basis === 'typical') return avgPackagePrice;
-			if (basis === 'cheapest_pkg') return cheapestPackageItem.price;
-			if (basis === 'cheapest_kg') return bestItem.price;
-			if (basis === 'best_quality') return bestQuality.price;
+			if (basis === 'cheapest_pkg') return (cheapestPackageItem && cheapestPackageItem.price) || avgPackagePrice;
+			if (basis === 'cheapest_kg') return (bestItem && bestItem.price) || avgPackagePrice;
+			if (basis === 'best_quality') return (bestQuality && bestQuality.price) || avgPackagePrice;
 			return avgPackagePrice;
+		}
+
+		function currencySymbol(cur) {
+			if (!cur) return '€';
+			switch (cur) {
+				case 'USD':
+					return '$';
+				case 'BRL':
+					return 'R$';
+				case 'GBP':
+					return '£';
+				case 'GOLD':
+					return 'g';
+				default:
+					return '€';
+			}
+		}
+
+		function formatAmountForDisplay(eurAmount, cur) {
+			if (cur === 'GOLD') {
+				const gPer = goldPerGram || DEFAULT_GOLD_PER_GRAM || 1;
+				const grams = gPer ? eurAmount / gPer : 0;
+				return {text: `${grams.toFixed(3)} g`, raw: grams};
+			}
+
+			// prefer numeric rate from fetched `rates`, otherwise use sensible fallbacks
+			const fallbackRates = {USD: 1.1, BRL: 5.0, GBP: 0.87};
+			let rate = null;
+			if (cur === 'EUR') rate = 1;
+			else if (rates && typeof rates[cur] === 'number') rate = rates[cur];
+			else if (fallbackRates[cur]) rate = fallbackRates[cur];
+
+			let value = eurAmount;
+			if (rate != null && cur !== 'EUR') value = eurAmount * rate;
+
+			const sym = currencySymbol(cur);
+			return {text: `${sym}${value.toFixed(2)}`, raw: value};
 		}
 
 		function getChartPrices() {
@@ -323,6 +417,14 @@
 			App.chart.setCurrency(elCurrency.value);
 			App.chart.reset();
 			if (chartTab && chartTab.style.display !== 'none') App.chart.start(getChartPrices);
+			// re-render UI with new currency formatting
+			renderSummaryCardLocalized(avgPackagePrice, avgPerKg, avgWeight);
+			renderViewLocalized(compactToggle.checked, groups, items, itemsList);
+			const marketStatsDisp = marketStats.map((m) => ({
+				...m,
+				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+			}));
+			renderDetails({bestItem, worstItem, bestQuality, marketStats: marketStatsDisp});
 		});
 		if (basisSelectEl) {
 			basisSelectEl.addEventListener('change', () => {
@@ -340,17 +442,17 @@
 			saveSettings(s);
 			App.applyTranslations(s.lang, {avgPerKg, avgWeight, medianWeight, mode});
 			compactToggle.checked = s.defaultView === 'compact';
-			renderView(compactToggle.checked, groupByRounded(items, s.groupStep), items, itemsList);
+			renderViewLocalized(compactToggle.checked, groupByRounded(items, s.groupStep), items, itemsList);
 		});
 
 		groupStepSel.addEventListener('change', () => {
 			const step = parseInt(groupStepSel.value, 10) || 50;
-			renderView(compactToggle.checked, groupByRounded(items, step), items, itemsList);
+			renderViewLocalized(compactToggle.checked, groupByRounded(items, step), items, itemsList);
 		});
 		defaultViewSel.addEventListener('change', () => {
 			compactToggle.checked = defaultViewSel.value === 'compact';
 			const step = parseInt(groupStepSel.value, 10) || 50;
-			renderView(compactToggle.checked, groupByRounded(items, step), items, itemsList);
+			renderViewLocalized(compactToggle.checked, groupByRounded(items, step), items, itemsList);
 		});
 
 		resetSettingsBtn.addEventListener('click', () => {
@@ -359,6 +461,7 @@
 		});
 
 		const rates = await App.fetchRates();
+		const DEFAULT_GOLD_PER_GRAM = 128.82;
 		let goldPerGram = null;
 
 		btn.addEventListener('click', async () => {
@@ -378,7 +481,9 @@
 			} else {
 				if (cur === 'EUR') eurAmount = v;
 				else if (cur === 'GOLD') {
-					if (goldPerGram == null) goldPerGram = await App.fetchGoldPerGram();
+					if (goldPerGram == null)
+						goldPerGram =
+							(await App.fetchGoldPerGram().catch(() => DEFAULT_GOLD_PER_GRAM)) || DEFAULT_GOLD_PER_GRAM;
 					eurAmount = v * goldPerGram;
 				} else {
 					const r = rates[cur];
@@ -390,26 +495,41 @@
 				}
 			}
 
-			const kg = eurAmount / avgPerKg;
+			// Prepare display amount (converted to selected currency or grams for GOLD)
+			const display = formatAmountForDisplay(eurAmount, elCurrency.value);
+
+			const kg = avgPerKg ? eurAmount / avgPerKg : 0;
 			const units400 = (kg * 1000) / 400;
 
-			const numLas = eurAmount / unitPrice;
+			const numLas = unitPrice ? eurAmount / unitPrice : 0;
 			const absLas = Math.floor(numLas);
 			const exactLas = numLas.toFixed(2);
 			if (mode === 'lasagna') {
-				bigResult.textContent = `€${eurAmount.toFixed(2)}`;
+				bigResult.textContent = display.text;
 				bigSub.textContent = `${absLas} ${App.tr('lasagnas')} (${exactLas}) · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
 			} else {
 				bigResult.textContent = `${absLas}`;
-				bigSub.textContent = `${App.tr('lasagnas')} (${exactLas}) · €${eurAmount.toFixed(2)} · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
+				bigSub.textContent = `${App.tr('lasagnas')} (${exactLas}) · ${display.text} · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
 			}
 
 			summary.innerHTML = App.format(App.tr('summaryLine'), {
-				eur: eurAmount.toFixed(2),
+				eur: display.text,
 				kg: kg.toFixed(3),
 				units: units400.toFixed(1),
 			});
-			renderDetails({bestItem, worstItem, bestQuality, marketStats, eurAmount, kg});
+			const marketStatsDisp = marketStats.map((m) => ({
+				...m,
+				avgPerKgDisplay: formatAmountForDisplay(m.avgPerKg, elCurrency.value).text,
+			}));
+			renderDetails({
+				bestItem,
+				worstItem,
+				bestQuality,
+				marketStats: marketStatsDisp,
+				eurAmount,
+				kg,
+				displayAmount: display.text,
+			});
 		});
 	}
 })();
