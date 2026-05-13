@@ -183,13 +183,18 @@
 		let rates = null;
 
 		const items = await App.fetchLasanhaData();
+		if (!items || items.length === 0) {
+			if (results) results.querySelector('#summary').textContent = App.tr('errorNoData') || 'No data available';
+			return;
+		}
 		// fetch rates and setup gold fallback early so helper functions can use them
 		const FALLBACK_RATES = {USD: 1.1, BRL: 5.0, GBP: 0.87};
 		rates = (await App.fetchRates().catch(() => FALLBACK_RATES)) || FALLBACK_RATES;
 		const DEFAULT_GOLD_PER_GRAM = 128.82;
 		let goldPerGram = null;
 		const avgPerKg = items.reduce((s, i) => s + i.perKg, 0) / Math.max(items.length, 1);
-		const avgPackagePrice = items.reduce((s, i) => s + i.price, 0) / Math.max(items.length, 1);
+		let avgPackagePrice = items.reduce((s, i) => s + i.price, 0) / Math.max(items.length, 1);
+		if (!avgPackagePrice || avgPackagePrice <= 0) avgPackagePrice = (items[0] && items[0].price) || 1;
 
 		const weights = items.map((i) => i.weight).sort((a, b) => a - b);
 		const avgWeight = weights.reduce((s, w) => s + w, 0) / Math.max(weights.length, 1);
@@ -370,12 +375,12 @@
 
 		// Decide unit price based on selected basis -> returns price per lasagna
 		function getBasisPrice(basis) {
-			if (!basis) return avgPackagePrice;
-			if (basis === 'typical') return avgPackagePrice;
-			if (basis === 'cheapest_pkg') return (cheapestPackageItem && cheapestPackageItem.price) || avgPackagePrice;
-			if (basis === 'cheapest_kg') return (bestItem && bestItem.price) || avgPackagePrice;
-			if (basis === 'best_quality') return (bestQuality && bestQuality.price) || avgPackagePrice;
-			return avgPackagePrice;
+			let v = avgPackagePrice;
+			if (!basis || basis === 'typical') v = avgPackagePrice;
+			else if (basis === 'cheapest_pkg') v = (cheapestPackageItem && cheapestPackageItem.price) || avgPackagePrice;
+			else if (basis === 'cheapest_kg') v = (bestItem && bestItem.price) || avgPackagePrice;
+			else if (basis === 'best_quality') v = (bestQuality && bestQuality.price) || avgPackagePrice;
+			return v && v > 0 ? v : avgPackagePrice;
 		}
 
 		function currencySymbol(cur) {
@@ -512,8 +517,9 @@
 				bigResult.textContent = display.text;
 				bigSub.textContent = `${absLas} ${App.tr('lasagnas')} (${exactLas}) · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
 			} else {
-				bigResult.textContent = `${absLas}`;
-				bigSub.textContent = `${App.tr('lasagnas')} (${exactLas}) · ${display.text} · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
+				// show the exact number (with 2 decimals) and include the unit label to avoid confusion
+				bigResult.textContent = `${exactLas} ${App.tr('lasagnas')}`;
+				bigSub.textContent = `${display.text} · ${basisSelectEl?.selectedOptions[0]?.text || ''}`;
 			}
 
 			summary.innerHTML = App.format(App.tr('summaryLine'), {
